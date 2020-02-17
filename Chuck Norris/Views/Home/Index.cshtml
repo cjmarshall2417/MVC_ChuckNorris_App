@@ -1,0 +1,128 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<h1>Chuck Norris Jokes</h1>
+<img src="https://s3.amazonaws.com/mf-cnorris/assets/uploads/2016/10/19123509/timeline-05.jpg" width="500px" height="500px">
+
+<br />
+<br />
+
+<input id="SearchText" type="text" oninput="CheckTextBox()" />
+<button id="SearchButton" class="btn btn-primary" onclick="SearchForJoke()" disabled>Search for Joke</button>
+<p id="SearchCount"></p>
+
+<div id="SearchResultsText" style="width:1000px;height:500px;line-height:3em;overflow:scroll;padding:5px;">
+
+</div>
+
+<br />
+<select id="categories" onchange="enableCategorySearch()">
+</select>
+<button id="CategoryButton" class="btn btn-primary" disabled onclick="GetCategoryJoke()">Get a Joke From Selected Category</button>
+<!--The rest of the categories are added in the script by using an api call to get the valid categories-->
+<p id="categoryJoke"></p>
+
+<br />
+
+<p id="randomJokeText"></p>
+<span>Toggle Random Jokes</span>
+<input data-toggle="toggle" id="RandomJokeDisplay" type="checkbox" checked  />
+
+<script type="text/javascript">
+    //starts the randomJoke timer so it's on by default
+    var timer = setInterval(GetRandomJoke, 5000);
+    //manually call a randomJoke once so one is ready right at the start of page load
+    GetRandomJoke();
+    //fill our select with options based on the valid categories returned by api
+    GetCategories();
+
+    function GetRandomJoke() {
+        $.get("../home/getRandomJoke", function (randomJokeString) {
+            var randomJoke = JSON.parse(randomJokeString);
+            document.getElementById("randomJokeText").innerHTML = randomJoke.value;
+        }
+        );
+    }
+
+    function SearchForJoke() {
+        var searchString = document.getElementById("SearchText").value;
+        var url = "../home/searchForJoke?search=" + searchString;
+
+        $.get(url, function (searchData) {
+            var searchResults = JSON.parse(searchData);
+            document.getElementById("SearchCount").innerHTML = searchResults["total"] + " search results found.";
+
+            var results = searchResults["result"];
+            var resultStrings = [];
+            for (let key in results) {
+                resultStrings.push(results[key]["value"]);
+            }
+
+            var resultsHTML = "";
+            resultStrings.forEach(function (joke) {
+
+                resultsHTML += "<p>" + joke + "</p>";
+
+            });
+            document.getElementById("SearchResultsText").innerHTML = resultsHTML;
+        });
+    }
+
+    function GetCategoryJoke() {
+        var selectedCategory = $("#categories :selected").text();
+
+        if (selectedCategory != "Select a Joke Category") {
+            $.get("../home/GetCategoryJoke/?selectedCategory=" + selectedCategory, function (categoryJokeData) {
+                var parsedJSON = JSON.parse(categoryJokeData);
+                document.getElementById("categoryJoke").innerHTML = parsedJSON.value;
+            });
+        }
+        else {
+            alert("Select a category first");
+        }
+    }
+
+    function GetCategories() {
+        $.get("../home/getCategories", function (categoryData) {
+            var parsedJSON = JSON.parse(categoryData)
+            var categoryHTML = "<option selected disabled hidden value=''>Select a Joke Category</option>";
+
+            for (let key in parsedJSON) {
+                categoryHTML += "<option>" + parsedJSON[key] + "</option>";
+            }
+
+            document.getElementById("categories").innerHTML = categoryHTML;
+        });
+    }
+
+    function enableCategorySearch() {
+        document.getElementById("CategoryButton").disabled = false;
+    }
+
+    function CheckTextBox() {
+        if (document.getElementById("SearchText").value.length > 2) {
+            document.getElementById("SearchButton").disabled = false;
+        }
+        else {
+            document.getElementById("SearchButton").disabled = true;
+        }
+    }
+
+    //this is where we toggle the random joke display.
+    $('#RandomJokeDisplay').change(function () {
+        if (this.checked) {
+            //this is here to make toggling the random jokes back on more responsive
+            //otherwise the user would have to wait 5 seconds for a new one to display and
+            //might click the toggle again thinking it's not working.
+            GetRandomJoke();
+            //restart the random joke interval timer
+            timer = setInterval(GetRandomJoke, 5000);
+        }
+        else {
+            clearInterval(timer);
+            document.getElementById("randomJokeText").innerHTML = "Random Jokes Stopped.";
+        }
+    })
+
+</script>
